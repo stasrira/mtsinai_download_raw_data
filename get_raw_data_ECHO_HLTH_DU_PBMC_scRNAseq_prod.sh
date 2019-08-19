@@ -4,7 +4,7 @@
 DL_TOOL_LOC="./dl_raw_data.sh" #path to the download tool
 ARCH_TOOL_LOC="./arch_logs.sh"
 DLD_URL="https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00814_TechDev_Duke_collab/" #remote web folder where from data is picked up
-TRG_FLD="/ext_data/shared/ECHO/DU/HLTH/scrna-seq" #local folder where to data is being downloaded
+TRG_FLD="/ext_data/shared/ECHO/HLTH/DU/PBMC/scrna-seq" #local folder where to data is being downloaded
 #========================
 
 ME=$(echo "${0##*/}" | cut -f 1 -d '.') #get name of the file it is running from

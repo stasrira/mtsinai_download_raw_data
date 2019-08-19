@@ -48,7 +48,9 @@ fi
 
 EXCL_ARR=(${FLS_EXCL//:/ })
 if [ "$_PD" == "1" ]; then #output in debug mode only
-	echo "Exclude flies list = "${EXCL_ARR[@]}
+	echo "Log folder to be search for files to be archived = "$FOLDER
+	echo "File name mapping of the files to be archived = "$SRCH_MAP  
+	echo "Exclude files list = "${EXCL_ARR[@]}
 fi
 
 #for filename in ./get_raw_data_ECHO_PM_scRNAseq_logs/*.*; do
@@ -76,7 +78,7 @@ do
 		if [ "$_PD" == "1" ]; then #output in debug mode only
 			echo "File to be archved = "$FILE
 		fi
-		tar -cvf $FILE".tar" $FILE && rm -f $FILE
+		tar -cvzf $FILE".tar" $FILE && rm -f $FILE
 	fi
 
 done
