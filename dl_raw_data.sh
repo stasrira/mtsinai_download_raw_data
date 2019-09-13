@@ -62,6 +62,9 @@ if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "Report (-c): " $_CUT_DIR_NUM
 fi
 
+#verify that target folder exists and create one if it is not
+mkdir -p "$_TRG"
+
 #update _CMD_TMP variable by substituting place-holders with the actual values supplied as an argument
 _CMD=${_CMD_TMP//$_PL_HLDR_URL/$_URL}
 _CMD=${_CMD//$_PL_HLDR_TRG/$_TRG}
