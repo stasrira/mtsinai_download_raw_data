@@ -1,5 +1,5 @@
 #!/bin/bash
-#========================
+#=========== THIS SCRIPT IS NOT IN USE CURRENTLY; this is an old approach of running this task =============
 #verify the set value for the follwoing variables, to make sure that they point to correct locations
 DL_TOOL_LOC="./dl_raw_data.sh" #path to the download tool
 ARCH_TOOL_LOC="./arch_logs.sh"
