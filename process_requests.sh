@@ -38,7 +38,8 @@ _PD=0
 #identify locations and names of log_folder for this run
 ME=$(echo "${0##*/}" | cut -f 1 -d '.') #get name of the file it is running from
 LOG_FLD=$MAIN_LOG/$(date +"%Y%m%d_%H%M%S")_$ME"_logs"
-REQ_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_request.log"
+REQ_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_request_log.txt"
+REQ_ERROR_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_error_log.txt"
 echo "Log folder for this request: " $LOG_FLD
 
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
@@ -133,14 +134,29 @@ do
 			
 			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d" | tee -a "$REQ_LOG_FILE"
 			#run the download tool for each of the URLs
-			$DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"
-			
-			if [ "$_PD" == "1" ]; then #output in debug mode only
-				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
-				echo "Here is last 3 lines from the associated log file:" | tee -a "$REQ_LOG_FILE"
-				tail -n 3 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE"
-				echo "All details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
+			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
+				if [ "$_PD" == "1" ]; then #output in debug mode only
+					echo "$(date +"%Y-%m-%d %H:%M:%S")-->Successful finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
+					echo  | tee -a "$REQ_LOG_FILE"
+					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
+					echo "Here is last 3 lines from the associated log file:" | tee -a "$REQ_LOG_FILE"
+					tail -n 3 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE"
+					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
+					echo  | tee -a "$REQ_LOG_FILE"
+				fi
+			else
+				if [ "$_PD" == "1" ]; then #output in debug mode only
+					echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR--> has occurred during processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					echo "The log file for the failed download process: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_ERROR_LOG_FILE" #output this only to error log file
+					echo "------------------------------" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					echo "Here is last 10 lines from the associated log file:" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					tail -n 10 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					echo "------------------------------" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+				fi
 			fi
+			echo "All details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
 		fi
 		CNT=$((CNT+1))
 		if [ "$_PD" == "1" ]; then #output in debug mode only
@@ -168,6 +184,8 @@ done
 echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool: Start archiving old log files => $ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES" | tee -a "$REQ_LOG_FILE"
 
 #invoke archiving tool to archive old log files except the most recent created one
-$ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES 2>&1 | tee -a "$REQ_LOG_FILE"
-
-echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool has finished" | tee -a "$REQ_LOG_FILE"
+if $ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES 2>&1 | tee -a "$REQ_LOG_FILE"; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool has successfully finished" | tee -a "$REQ_LOG_FILE"
+else
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool has finished with an error" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+fi
