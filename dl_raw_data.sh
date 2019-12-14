@@ -11,6 +11,7 @@ _CMD_TMP="wget -r -np -R \"index.html*\" -nc -nH --cut-dirs={{cut_dir_num}} -P {
 _PL_HLDR_URL="{{source_url}}"
 _PL_HLDR_TRG="{{target_path}}"
 _PL_HLDR_CUT_DIR_NUM="{{cut_dir_num}}"
+#_PL_HLDR_LOC_NAME="{{local_name}}"
 
 _HELP="\n$_VERSION
 	\n\narguments usage: 
@@ -60,6 +61,7 @@ if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "Report (-u): " $_URL
 	echo "Report (-t): " $_TRG
 	echo "Report (-c): " $_CUT_DIR_NUM
+	#echo "Report (-n): " $_LOC_NAME
 fi
 
 #verify that target folder exists and create one if it is not
@@ -69,6 +71,7 @@ mkdir -p "$_TRG"
 _CMD=${_CMD_TMP//$_PL_HLDR_URL/$_URL}
 _CMD=${_CMD//$_PL_HLDR_TRG/$_TRG}
 _CMD=${_CMD//$_PL_HLDR_CUT_DIR_NUM/$_CUT_DIR_NUM}
+#_CMD=${_CMD//$_PL_HLDR_LOC_NAME/$_LOC_NAME}
 
 #combine the full sqlcmd call into a string; actual SQL query is delimited with double quotes (presented as escap characters)
 #_CMD="sqlcmd -S $_S -U $_U -P $_P -d $_D -Q \" $_QR \" $_DELIM_FMT"

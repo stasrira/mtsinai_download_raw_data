@@ -42,41 +42,52 @@ shift $((OPTIND-1))
 
 if [ "$FOLDER" == "" ]; then
 	#if folder parameter was not provided, abourt the operation
-	echo "Folder to be archived ('-f' parameter) was not set, aborting process!"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Folder to be archived ('-f' parameter) was not set, aborting process!"
 	exit 1
 fi
 
 EXCL_ARR=(${FLS_EXCL//:/ })
 if [ "$_PD" == "1" ]; then #output in debug mode only
-	echo "Log folder to be search for files to be archived = "$FOLDER
-	echo "File name mapping of the files to be archived = "$SRCH_MAP  
-	echo "Exclude files list = "${EXCL_ARR[@]}
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Log folder to be search for files to be archived (-f) = "$FOLDER
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->File name mapping of the files to be archived (-m) = "$SRCH_MAP
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Files to be excluded from archive (-e) = "$FLS_EXCL
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Exclude files list from (-e) parameter = "${EXCL_ARR[@]}
 fi
 
 #for filename in ./get_raw_data_ECHO_PM_scRNAseq_logs/*.*; do
 #loop through all files (based on a map) in the given folder
 FILES=$(find $FOLDER -name "$SRCH_MAP")
+#echo "FILES =>" $FILES
 #for FILE in $FOLDER/$SRCH_MAP
 for FILE in $FILES
 do
+	if [ "$_PD" == "1" ]; then #output in debug mode only
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->FILE PATH= " $FILE
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->FILE NAME= " $(basename $FILE)
+	fi
 	SKIP=0
 	for EXL in ${EXCL_ARR[@]}
 	do
-		#echo "Variable EXL = " $EXL
-		if [ "$FILE" == "$FOLDER/$EXL" ]; then
+		if [ "$_PD" == "1" ]; then #output in debug mode only
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->FILE EXL = " $EXL
+		fi
+		#compare file names to see if it has to be excluded
+		if [ "$(basename $FILE)" == "$(basename $EXL)" ]; then
 			SKIP=1
 			if [ "$_PD" == "1" ]; then #output in debug mode only
-				echo "File is excluded = "$FILE
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->File will be excluded = "$FILE
 			fi
 			break
 		fi
 	done
-	#echo "Variable SKIP = "$SKIP
-	
-	if [ "$SKIP" == 0 ]; then
+	if [ "$_PD" == "1" ]; then #output in debug mode only
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->SKIP ARCHIVING FLAG = "$SKIP
+	fi
+
+	if [ "$SKIP" == "0" ]; then
 		#create tar file for the given file name and delete file after archiving
 		if [ "$_PD" == "1" ]; then #output in debug mode only
-			echo "File to be archved = "$FILE
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->File to be archved = "$FILE
 		fi
 		tar -cvzf $FILE".tar" $FILE && rm -f $FILE
 	fi
