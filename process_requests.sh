@@ -3,7 +3,7 @@
 set -euo pipefail
 
 #version of the script
-_VER_NUM=1.00
+_VER_NUM=1.01
 _VERSION="`basename ${0}` (version: $_VER_NUM)" 
 
 _HELP="\n$_VERSION
@@ -34,15 +34,24 @@ MAIN_LOG="logs"
 PROCESSED_FLD="processed"
 REQ_FOLDER=""
 SRCH_MAP="*.tsv"
+GRP="data"
 _PD=0
+
+#Email parameters
+smtp="smtp.mssm.edu:25"
+to_emails="stasrirak.ms@gmail.com,stas.rirak@mssm.edu"
+from_email="stas.rirak@mssm.edu"
+
 #identify locations and names of log_folder for this run
 ME=$(echo "${0##*/}" | cut -f 1 -d '.') #get name of the file it is running from
 LOG_FLD=$MAIN_LOG/$(date +"%Y%m%d_%H%M%S")_$ME"_logs"
-REQ_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_request_log.txt"
+REQ_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_process_log.txt"
 REQ_ERROR_LOG_FILE=$LOG_FLD/$(date +"%Y%m%d_%H%M%S")"_error_log.txt"
 echo "Log folder for this request: " $LOG_FLD
 
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
+ATTCH_REQUESTS=""
+PROC_REQS=""
 
 #check if LOG_FLD exists, if not, create a new folder
 mkdir -p "$LOG_FLD"
@@ -137,13 +146,18 @@ do
 			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->Successful finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
-					echo  | tee -a "$REQ_LOG_FILE"
+					#echo  | tee -a "$REQ_LOG_FILE"
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
 					echo "Here is last 3 lines from the associated log file:" | tee -a "$REQ_LOG_FILE"
 					tail -n 3 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE"
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
-					echo  | tee -a "$REQ_LOG_FILE"
+					#echo  | tee -a "$REQ_LOG_FILE"
 				fi
+				#change group assignment for just downloaded data
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Change group assignment to group '$GRP' for the created directory (and all its contents): '$FINAL_TRG_FLD'" | tee -a "$REQ_LOG_FILE"
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Below is an output from change group command => chgrp -R -v $GRP $FINAL_TRG_FLD:" | tee -a "$REQ_LOG_FILE"
+				chgrp -R -v $GRP $FINAL_TRG_FLD 2>&1 | tee -a "$REQ_LOG_FILE"
+				echo "------------------------------" | tee -a "$REQ_LOG_FILE"
 			else
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR--> has occurred during processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
@@ -156,7 +170,9 @@ do
 					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 				fi
 			fi
-			echo "All details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
+			echo "End of processing download request for:'$LOC_NAME'. Additional details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
+			echo "==============================" | tee -a "$REQ_LOG_FILE"
+			echo  | tee -a "$REQ_LOG_FILE"
 		fi
 		CNT=$((CNT+1))
 		if [ "$_PD" == "1" ]; then #output in debug mode only
@@ -179,6 +195,9 @@ do
 	if [ "$_PD" == "1" ]; then #output in debug mode only
 		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Download Request file: '"$CUR_FILE_PATH"' was moved/renamed to '"$PROCESSED_FILE"'" | tee -a "$REQ_LOG_FILE"
 	fi
+	
+	ATTCH_REQUESTS=$ATTCH_REQUESTS" --attach-type text/plain --attach $PROCESSED_FILE"
+	PROC_REQS=$PROC_REQS" "$(basename $PROCESSED_FILE)";"
 done
 
 echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool: Start archiving old log files => $ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES" | tee -a "$REQ_LOG_FILE"
@@ -188,4 +207,25 @@ if $ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES 2>&1 | tee -a "$REQ_LOG_
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool has successfully finished" | tee -a "$REQ_LOG_FILE"
 else
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool has finished with an error" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+fi
+
+#prepare an email parameters to send status of the process
+subject="Subject: Summary of processing download request " #$PROCESSED_FILE
+attch_req_log="--attach-type text/plain --attach $REQ_LOG_FILE"
+if test -f "$REQ_ERROR_LOG_FILE"; then
+	#errors reported
+	attch_err_log="--attach-type text/plain --attach $REQ_ERROR_LOG_FILE"
+	email_body="Download request(s) for '$PROC_REQS' was(were) completed with ERRORS. See attached '$(basename $REQ_ERROR_LOG_FILE)' for details."
+else
+	#no errors reported
+	attch_err_log=""
+	email_body="Download request(s) for '$PROC_REQS' was(were) SUCCESSFULLY COMPLETED, no errors were reported."
+fi
+
+#send email
+echo "$(date +"%Y-%m-%d %H:%M:%S")-->Preparing to send status email."  | tee -a "$REQ_LOG_FILE"
+echo "$(date +"%Y-%m-%d %H:%M:%S")-->smtp = "$smtp "; to_email = "$to_emails "; from_email = "$from_email | tee -a "$REQ_LOG_FILE"
+#swaks --server "$smtp" --to "$to_emails" --from "$from_email" --header "$subject"  --add-header "MIME-Version: 1.0" --add-header "Content-Type: text/html" --body "$email_body" --attach-type text/html --attach "$file" --attach-type text/html --attach "$REQ_LOG_FILE" $error_log_path
+if ! swaks --server $smtp --to $to_emails --from $from_email --header "$subject"  --add-header "MIME-Version: 1.0" --add-header "Content-Type: text/html" --body "$email_body" $ATTCH_REQUESTS $attch_req_log $attch_err_log | tail -n 4  | tee -a "$REQ_LOG_FILE" ; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected error occurred during sending status email." | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 fi
