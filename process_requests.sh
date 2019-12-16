@@ -11,7 +11,7 @@ _HELP="\n$_VERSION
 		\n\t[-v: report the version; if this argument is supplied, it aborts execution of the script]
 		\n\t[-h: help; if this argument is supplied, it aborts execution of the script]
 		\n\t[-d: debug version]
-		\n\t[-f path to folder that will contain Download Request files (of predefined format); this is a requied parameter
+		\n\t[-f path to folder that will contain Download Request files (of predefined format); this is a required parameter
 		\n\t\tRequest files have to be a tab-delimited text files.
 		\n\t\tEach row of the file contains one download request, where 
 		\n\t\t\t- First argument provides URL to the data to be downloaded.

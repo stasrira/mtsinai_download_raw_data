@@ -16,7 +16,7 @@ _HELP="\n$_VERSION
 		\n\t[-v: report the version; if this argument is supplied, it aborts execution of the script]
 		\n\t[-h: help; if this argument is supplied, it aborts execution of the script]
 		\n\t[-d: debug version]
-		\n\t[-f path to target folder that will be checked for files to be archived; this is a requied parameter
+		\n\t[-f path to target folder that will be checked for files to be archived; this is a required parameter
 		\n\t[-m map of the file names (using shell standards) to select files to be archived in the provided folder, i.e. *.log
 		\n\t[-e semicolon separated list of files to be excluded from archiving; it will contain file(s) that qualify for the provided map, but have to be excluded, i.e. 20190815_104445.log:20190815_104435.log
 		"
