@@ -55,7 +55,7 @@ echo "Log folder for this request: " $LOG_FLD
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
 ATTCH_REQUESTS=""
 PROC_REQS=""
-COPY_METHOD_PARAM="" #"" is a default value; other expected value are "wget cp"
+COPY_METHOD_INPUT="" #"" is a default value; other expected value are "wget cp"
 
 #check if LOG_FLD exists, if not, create a new folder
 mkdir -p "$LOG_FLD"
@@ -67,7 +67,7 @@ do
     case "$o" in
 	f) REQ_FOLDER="$OPTARG";;
 	s) SRCH_MAP="$OPTARG";;
-	m) COPY_METHOD_PARAM="$OPTARG";;
+	m) COPY_METHOD_INPUT="$OPTARG";;
 	d) _PD="1";;
 	v) echo -e $_VERSION
 	   exit 0;;
@@ -83,7 +83,7 @@ shift $((OPTIND-1))
 if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->REQ_FOLDER (-f): " $REQ_FOLDER  | tee -a "$REQ_LOG_FILE"
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->SRCH_MAP (-s): " $SRCH_MAP  | tee -a "$REQ_LOG_FILE"
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->COPY_METHOD_PARAM (-m): " $COPY_METHOD_PARAM  | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->COPY_METHOD_INPUT (-m): " $COPY_METHOD_INPUT  | tee -a "$REQ_LOG_FILE"
 fi
 
 if [ "$REQ_FOLDER" == "" ]; then
@@ -92,8 +92,9 @@ if [ "$REQ_FOLDER" == "" ]; then
 	exit 1
 fi
 
-if [[ ! " ${COPY_METHODS[@]} " =~ " ${COPY_METHOD_PARAM} " ]]; then
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_PARAM' was provided for the copy method ('-m' parameter), aborting the process! Expected values are '$COPY_METHODS'." | tee -a "$REQ_LOG_FILE"
+# raise error if a $COPY_METHOD_INPUT is not blank and not one of the expected values
+if [[ ! " ${COPY_METHODS[@]} " =~ " ${COPY_METHOD_INPUT} " ]] && [ ! "$COPY_METHOD_INPUT" == "" ]; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_INPUT' was provided for the copy method ('-m' parameter), aborting the process! Expected values are '$COPY_METHODS'." | tee -a "$REQ_LOG_FILE"
 	exit 1
 fi
 
@@ -125,14 +126,18 @@ do
 			fi
 			
 			
-			if [ "$COPY_METHOD_PARAM" == "" ]; then
+			if [ "$COPY_METHOD_INPUT" == "" ]; then
 				#if copy method parameter is blank, check if that starts with 'http://' and assign 'wget', otherwise assign 'cp'
-				if [[ $COPY_METHOD_PARAM =~ $COPY_METHOD_FILTER_VALUE ]]
+				if [[ "$COPY_METHOD_INPUT" =~ ^"$COPY_METHOD_FILTER_VALUE".* ]]; then
 				then
 					COPY_METHOD="wget"
 				else
 					COPY_METHOD="cp"
 				fi
+			fi
+			
+			if [ "$_PD" == "1" ]; then #output in debug mode only
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Final copy method to be used: '$COPY_METHOD'" | tee -a "$REQ_LOG_FILE"
 			fi
 			
 			#identify number of subfolders in the URL
