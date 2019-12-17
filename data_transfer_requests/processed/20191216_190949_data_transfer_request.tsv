@@ -1,0 +1,3 @@
+Source	Destination	LocalName
+https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD01119_DARPA/096_ATACseq_AS10_07990_2/	/ext_data/stas/ECHO/HIV/HI/PBMC/scrna-seq	AS10-07990_2_Test_20191213
+https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD01119_DARPA/fastqs/077_ATACseq_DU19_01S0003542_2/	/ext_data/stas/ECHO/MRSA/DU/PBMC/scatacseq/fastqs	DU19-01S0003542_2_Test_20191213
