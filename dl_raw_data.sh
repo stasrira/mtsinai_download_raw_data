@@ -7,7 +7,9 @@ _VERSION="`basename ${0}` (version: $_VER_NUM)"
 
 #define main variables
 #examlpe of command: wget -r -np -R "index.html*" -nc -nH --cut-dirs=2 -P /ext_data/stas/ECHO/PM/scrna-seq  https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
-_CMD_TMP="wget -r -np -R \"index.html*\" -nc -nH --cut-dirs={{cut_dir_num}} -P {{target_path}} {{source_url}}"
+_CMD_TMP1="cp -R {{source_url}} {{target_path}}"
+_CMD_TMP2="wget -r -np -R \"index.html*\" -nc -nH --cut-dirs={{cut_dir_num}} -P {{target_path}} {{source_url}}"
+_CMD_TMP=""
 _PL_HLDR_URL="{{source_url}}"
 _PL_HLDR_TRG="{{target_path}}"
 _PL_HLDR_CUT_DIR_NUM="{{cut_dir_num}}"
@@ -35,15 +37,17 @@ _TRG=""
 _PD=""
 _URL=""
 _CUT_DIR_NUM=0
+_COPY_METHOD=""
 
 #analyze received arguments
-while getopts u:t:c:dvh o
+while getopts u:t:c:m:dvh o
 do
     case "$o" in
 	u) _URL="$OPTARG";;
 	t) _TRG="$OPTARG";;
 	d) _PD="1";;
 	c) _CUT_DIR_NUM="$OPTARG";;
+	m) _COPY_METHOD="$OPTARG";;
 	v) echo -e $_VERSION
 	   exit 0;;
 	h) echo -e $_HELP
@@ -57,15 +61,26 @@ shift $((OPTIND-1))
 
 #output values of arguments in debug mode
 if [ "$_PD" == "1" ]; then #output in debug mode only
-    echo "Command template(_CMD_TMP): " $_CMD_TMP
 	echo "Report (-u): " $_URL
 	echo "Report (-t): " $_TRG
 	echo "Report (-c): " $_CUT_DIR_NUM
-	#echo "Report (-n): " $_LOC_NAME
+	echo "Report (-m): " $_COPY_METHOD
 fi
 
 #verify that target folder exists and create one if it is not
 mkdir -p "$_TRG"
+
+#verify requested method to be used and set the _CMD_TMP accordingly
+if [ "$_COPY_METHOD" == "cp" ]; then
+	_CMD_TMP=$_CMD_TMP1
+fi
+if [ "$_COPY_METHOD" == "wget" ]; then
+	_CMD_TMP=$_CMD_TMP2
+fi
+
+if [ "$_PD" == "1" ]; then #output in debug mode only
+    echo "Command template(_CMD_TMP): " $_CMD_TMP
+fi
 
 #update _CMD_TMP variable by substituting place-holders with the actual values supplied as an argument
 _CMD=${_CMD_TMP//$_PL_HLDR_URL/$_URL}

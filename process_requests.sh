@@ -28,6 +28,9 @@ ARCH_TOOL_LOC="./arch_logs.sh"
 #declare -a DLD_URLS=("https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD01119_DARPA/096_ATACseq_AS10_07990_2/outs/summary.csv"
 #)
 #TRG_FLD="/ext_data/shared/ECHO/HIV/HI/PBMC/scrna-seq" #local folder where to data is being downloaded
+
+COPY_METHODS=(wget cp) # array of expected methods to be used for data copying
+COPY_METHOD_FILTER_VALUE="http://"
 CUT_DIR=0 #default number of web directories that will be cut off (starting from the domain name)
 CUT_DIR_STANDARD_DEDUCTION=2 #2 stands for number of elements after parcing the URL that reflects HTTP and main domain parts
 MAIN_LOG="logs"
@@ -52,17 +55,19 @@ echo "Log folder for this request: " $LOG_FLD
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
 ATTCH_REQUESTS=""
 PROC_REQS=""
+COPY_METHOD_PARAM="" #"" is a default value; other expected value are "wget cp"
 
 #check if LOG_FLD exists, if not, create a new folder
 mkdir -p "$LOG_FLD"
 
 
 #analyze received arguments
-while getopts f:sdvh o
+while getopts f:smdvh o
 do
     case "$o" in
 	f) REQ_FOLDER="$OPTARG";;
 	s) SRCH_MAP="$OPTARG";;
+	m) COPY_METHOD_PARAM="$OPTARG";;
 	d) _PD="1";;
 	v) echo -e $_VERSION
 	   exit 0;;
@@ -78,11 +83,17 @@ shift $((OPTIND-1))
 if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->REQ_FOLDER (-f): " $REQ_FOLDER  | tee -a "$REQ_LOG_FILE"
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->SRCH_MAP (-s): " $SRCH_MAP  | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->COPY_METHOD_PARAM (-m): " $COPY_METHOD_PARAM  | tee -a "$REQ_LOG_FILE"
 fi
 
 if [ "$REQ_FOLDER" == "" ]; then
 	#if folder parameter was not provided, abourt the operation
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Locaiont of the request folder was not provided ('-f' parameter), aborting process!" | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Locaiont of the request folder was not provided ('-f' parameter), aborting the process!" | tee -a "$REQ_LOG_FILE"
+	exit 1
+fi
+
+if [[ ! " ${COPY_METHODS[@]} " =~ " ${COPY_METHOD_PARAM} " ]]; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_PARAM' was provided for the copy method ('-m' parameter), aborting the process! Expected values are '$COPY_METHODS'." | tee -a "$REQ_LOG_FILE"
 	exit 1
 fi
 
@@ -113,6 +124,17 @@ do
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->requested local name: $LOC_NAME" | tee -a "$REQ_LOG_FILE"
 			fi
 			
+			
+			if [ "$COPY_METHOD_PARAM" == "" ]; then
+				#if copy method parameter is blank, check if that starts with 'http://' and assign 'wget', otherwise assign 'cp'
+				if [[ $COPY_METHOD_PARAM =~ $COPY_METHOD_FILTER_VALUE ]]
+				then
+					COPY_METHOD="wget"
+				else
+					COPY_METHOD="cp"
+				fi
+			fi
+			
 			#identify number of subfolders in the URL
 			elements=$(echo $dldurl | tr "/" "\n") #split URL by "/"
 			el_cnt=0
@@ -141,9 +163,9 @@ do
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->List of Log Files created for current request= "$CREATED_LOG_FILES | tee -a "$REQ_LOG_FILE"
 			fi
 			
-			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d" | tee -a "$REQ_LOG_FILE"
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d" | tee -a "$REQ_LOG_FILE"
 			#run the download tool for each of the URLs
-			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
+			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->Successful finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
 					#echo  | tee -a "$REQ_LOG_FILE"
