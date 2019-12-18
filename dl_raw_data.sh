@@ -7,7 +7,7 @@ _VERSION="`basename ${0}` (version: $_VER_NUM)"
 
 #define main variables
 #examlpe of command: wget -r -np -R "index.html*" -nc -nH --cut-dirs=2 -P /ext_data/stas/ECHO/PM/scrna-seq  https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
-_CMD_TMP1="cp -R {{source_url}} {{target_path}}"
+_CMD_TMP1="cp -Rv {{source_url}} {{target_path}}"
 _CMD_TMP2="wget -r -np -R \"index.html*\" -nc -nH --cut-dirs={{cut_dir_num}} -P {{target_path}} {{source_url}}"
 _CMD_TMP=""
 _PL_HLDR_URL="{{source_url}}"
@@ -73,6 +73,7 @@ mkdir -p "$_TRG"
 #verify requested method to be used and set the _CMD_TMP accordingly
 if [ "$_COPY_METHOD" == "cp" ]; then
 	_CMD_TMP=$_CMD_TMP1
+	_URL=$_URL/* #adds trailing slash and start to make sure that only content of the source is being copied without the origial folder name
 fi
 if [ "$_COPY_METHOD" == "wget" ]; then
 	_CMD_TMP=$_CMD_TMP2
