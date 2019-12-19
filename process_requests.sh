@@ -60,6 +60,7 @@ echo "Log folder for this request: " $LOG_FLD
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
 ATTCH_REQUESTS=""
 PROC_REQS=""
+COPY_METHOD_INPUT="" #"" is a default value; other expected value are "wget cp"
 
 #check if LOG_FLD exists, if not, create a new folder
 mkdir -p "$LOG_FLD"
@@ -98,7 +99,7 @@ fi
 
 # raise error if a $COPY_METHOD_INPUT is not blank and not one of the expected values
 if [[ ! " ${COPY_METHODS[@]} " =~ " ${COPY_METHOD_INPUT} " ]] && [ ! "$COPY_METHOD_INPUT" == "" ]; then
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_INPUT' was provided for the copy method ('-m' parameter), aborting the process! Expected values are '${COPY_METHOD_WGET_FILTER[*]}'." | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_INPUT' was provided for the copy method ('-m' parameter), aborting the process! Expected values are ${COPY_METHODS[*]}'." | tee -a "$REQ_LOG_FILE"
 	exit 1
 fi
 
@@ -166,7 +167,7 @@ do
 			fi
 			
 			# exit 0 # for testing only ==========================
-			
+
 			#identify number of subfolders in the URL
 			elements=$(echo $dldurl | tr "/" "\n") #split URL by "/"
 			el_cnt=0

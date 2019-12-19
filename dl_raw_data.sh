@@ -24,7 +24,7 @@ _HELP="\n$_VERSION
 		\n\t[-t target path where to downloaded data will be saved, i.e. /ext_data/stas/ECHO/PM/scrna-seq] 
 		\n\t[-u URL of the source (where from data is being downloaded), i.e. https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
 		\n\t[-c number of URL's directories (following the main URL part with domain) that should be ignored, i.e. in the URL example provided for '-u' argument, there are 2 directories
-		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.                                                   +               \n\t\t\texpected values are 'wget' or 'cp'].
+		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.
 		\n\t\t\texpected values are 'wget' or 'cp'].
 		"
 
@@ -73,21 +73,22 @@ fi
 #verify that target folder exists and back it up if it exists
 _TAR_FILE_NAME=${_TRG}'_date%Y%M%D_%H%M%S.tar'
 if [ -d "$_TRG" ]; then
-       if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
-               echo Existing folder '${_TRG}' was successfully archived to '${_TAR_FILE_NAME}' and its original content was deleted.
-       else
-               echo ERROR: Archiving existing folder '${_TRG}' failed. Aborting the data retrieval process for the current requests entry.
-               exit 1
-       fi
+	if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
+		echo Existing folder '${_TRG}' was successfully archived to '${_TAR_FILE_NAME}' and its original content was deleted.
+	else
+		echo ERROR: Archiving existing folder '${_TRG}' failed. Aborting the data retrieval process for the current requests entry. 
+		exit 1
+	fi
 fi
 
 #verify that target folder exists and create it if it is not there
 mkdir -p "$_TRG"
 
+
 #verify requested method to be used and set the _CMD_TMP accordingly
 if [ "$_COPY_METHOD" == "cp" ]; then
 	_CMD_TMP=$_CMD_TMP1
-	_URL=$_URL/* #adds trailing slash and start to make sure that only content of the source is being copied without the origial folder name
+	_URL=$_URL/ #adds trailing slash to make sure that only content of the source is being copied without the origial folder name
 fi
 if [ "$_COPY_METHOD" == "wget" ]; then
 	_CMD_TMP=$_CMD_TMP2
