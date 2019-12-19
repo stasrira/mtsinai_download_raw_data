@@ -18,6 +18,8 @@ _HELP="\n$_VERSION
 		\n\t\t\t- Second argument specifies path to the location where downloaded data will be saved.
 		\n\t\t\t- Third argument specifies the folder name that will be created in the given path; all downloaded data will be save in this folder.
 		\n\t[-s: pattern that will be used to search for Download Request files in the given folder]
+		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source for each entry in the request file will be analyzed to select the appropriate command.
+		\n\t\t\texpected values are 'wget' or 'cp'].
 		\n
 		"
 
