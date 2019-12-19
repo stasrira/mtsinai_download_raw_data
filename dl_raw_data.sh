@@ -2,12 +2,13 @@
 set -euo pipefail
 
 #version of the script
-_VER_NUM=1.01
+_VER_NUM=1.02
 _VERSION="`basename ${0}` (version: $_VER_NUM)" 
 
 #define main variables
 #examlpe of command: wget -r -np -R "index.html*" -nc -nH --cut-dirs=2 -P /ext_data/stas/ECHO/PM/scrna-seq  https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
-_CMD_TMP1="cp -Rv {{source_url}} {{target_path}}"
+#_CMD_TMP1="cp -Rv {{source_url}} {{target_path}}"
+_CMD_TMP1="rsync -rvh {{source_url}} {{target_path}}"
 _CMD_TMP2="wget -r -np -R \"index.html*\" -nc -nH --cut-dirs={{cut_dir_num}} -P {{target_path}} {{source_url}}"
 _CMD_TMP=""
 _PL_HLDR_URL="{{source_url}}"
@@ -23,6 +24,8 @@ _HELP="\n$_VERSION
 		\n\t[-t target path where to downloaded data will be saved, i.e. /ext_data/stas/ECHO/PM/scrna-seq] 
 		\n\t[-u URL of the source (where from data is being downloaded), i.e. https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
 		\n\t[-c number of URL's directories (following the main URL part with domain) that should be ignored, i.e. in the URL example provided for '-u' argument, there are 2 directories
+		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.                                                   +               \n\t\t\texpected values are 'wget' or 'cp'].
+		\n\t\t\texpected values are 'wget' or 'cp'].
 		"
 
 #set default values
@@ -67,7 +70,18 @@ if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "Report (-m): " $_COPY_METHOD
 fi
 
-#verify that target folder exists and create one if it is not
+#verify that target folder exists and back it up if it exists
+_TAR_FILE_NAME=${_TRG}'_date%Y%M%D_%H%M%S.tar'
+if [ -d "$_TRG" ]; then
+       if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
+               echo Existing folder '${_TRG}' was successfully archived to '${_TAR_FILE_NAME}' and its original content was deleted.
+       else
+               echo ERROR: Archiving existing folder '${_TRG}' failed. Aborting the data retrieval process for the current requests entry.
+               exit 1
+       fi
+fi
+
+#verify that target folder exists and create it if it is not there
 mkdir -p "$_TRG"
 
 #verify requested method to be used and set the _CMD_TMP accordingly
