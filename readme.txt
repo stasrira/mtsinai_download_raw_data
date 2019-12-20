@@ -1,5 +1,7 @@
 ======================================================
-Application for retrieving RawData from remote web locations
+Application for 
+	- retrieving information from remote web locations
+	- copying information from a network location
 =======================================================
 
 This application runs a script that utilizes other tools. Description of all supporting tools is provided further in this document.
@@ -20,8 +22,13 @@ The Request file contains one download requests per line in the file.
 	- The second column presents a local destination directory where data will be stored, 
 	- The third column presents the name of the directory (that will be created in the destination directory) where all downloaded data will be put. 
 	- The tool will strip any folder structure from the provided source and store the actual data in the destination folder.
+	- If method of processing of request is not supplied, every entry will be evaluated to ideintify the right method to use:
+		- If the source data entry (1st column's entry) starts with "http://" or "https://", wget tool will be use. 
+		- For all other cases, a network copy command (rsync) will be used.
 	- Upon completion of processing the request, it is being moved to a "processed" folder which is a subfolder being created in the directory storing all requests. 
-		- Appropriate permission should be set to allow the application to create such folder.
+		- Appropriate permission should be set to allow the application to create "processed" folder.
+	- While moving a request file to "processed" folder, it being renamed by adding a date stamp to the beginning of its name and putting a status of processing of it. 
+		- If no errors were reported, the status will be OK, if at least one error was reported, the status will be ERROR. Details of the process run can be retrieved from log files.
  
 Example of the request file entries:
 ...............................................
@@ -71,14 +78,13 @@ used to simplify calling of the process_requests.sh. If desired, this script can
 ----------------------------------------------
 Data Downloader - dl_raw_data.sh (current version 1.01)
 ----------------------------------------------
-This tool is designed to collect all files from the provided web location (except html files).
+This tool is designed to collect all files from the provided source location, which can be a web or local network one..
 The tool is a wrapper around wget utility that is used to retrieve files. 
-The main purpose is to collect sequencing result files (fastq, etc.) It will recursively go through all sub-folders, 
-get all files and download those to a location specified. The tool will not take files that were already downloaded and 
-exist in the destination location.
-The tool always won't create a sub-folder in the destination location corresponding the domain name of the URL being a source. 
-The tool (by default) will create a sub-folder structure corresponding to the URL's route structure following the domain name. However,
-there is an ability to avoid that using [-c] argument.
+The tool will recursively go through all sub-folders, get all files and download those to a location specified. 
+If a destination contains a folder with the same name as the one that was requested to be created, the existing folder will be archived before overwriting. 
+A tar file will be created; the file name will consist of the original folder name and the date stamp of the time of archiving. If archiving is successfule
+the process will delete the original folder. After that the process will recreated the folder with required name and the new set of data will be downloaded into there.
+If archiving process fails, the process won't continue and the new data won't be donwnloaded. This failure will be reported as an error.
 
 Here is help info for in-line argument usage:
 	[-v: report the version; if this argument is supplied, it aborts execution of the script]
