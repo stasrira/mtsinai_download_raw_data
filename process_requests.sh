@@ -3,7 +3,7 @@
 set -euo pipefail
 
 #version of the script
-_VER_NUM=1.01
+_VER_NUM=1.02
 _VERSION="`basename ${0}` (version: $_VER_NUM)" 
 
 _HELP="\n$_VERSION
@@ -18,6 +18,8 @@ _HELP="\n$_VERSION
 		\n\t\t\t- Second argument specifies path to the location where downloaded data will be saved.
 		\n\t\t\t- Third argument specifies the folder name that will be created in the given path; all downloaded data will be save in this folder.
 		\n\t[-s: pattern that will be used to search for Download Request files in the given folder]
+		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source for each entry in the request file will be analyzed to select the appropriate command.
+		\n\t\t- expected values are 'wget' or 'cp'].
 		\n
 		"
 
@@ -28,6 +30,12 @@ ARCH_TOOL_LOC="./arch_logs.sh"
 #declare -a DLD_URLS=("https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD01119_DARPA/096_ATACseq_AS10_07990_2/outs/summary.csv"
 #)
 #TRG_FLD="/ext_data/shared/ECHO/HIV/HI/PBMC/scrna-seq" #local folder where to data is being downloaded
+
+COPY_METHODS=(wget cp) # array of expected methods to be used for data copying
+COPY_METHOD_WGET_FILTER=("http://" "https://")
+COPY_METHOD_INPUT="" #"" is a default value; other expected value are "wget cp"
+COPY_METHOD=""
+
 CUT_DIR=0 #default number of web directories that will be cut off (starting from the domain name)
 CUT_DIR_STANDARD_DEDUCTION=2 #2 stands for number of elements after parcing the URL that reflects HTTP and main domain parts
 MAIN_LOG="logs"
@@ -52,17 +60,19 @@ echo "Log folder for this request: " $LOG_FLD
 CREATED_LOG_FILES=$(basename $REQ_LOG_FILE)
 ATTCH_REQUESTS=""
 PROC_REQS=""
+COPY_METHOD_INPUT="" #"" is a default value; other expected value are "wget cp"
 
 #check if LOG_FLD exists, if not, create a new folder
 mkdir -p "$LOG_FLD"
 
 
 #analyze received arguments
-while getopts f:sdvh o
+while getopts f:s:m:dvh o
 do
     case "$o" in
 	f) REQ_FOLDER="$OPTARG";;
 	s) SRCH_MAP="$OPTARG";;
+	m) COPY_METHOD_INPUT="$OPTARG";;
 	d) _PD="1";;
 	v) echo -e $_VERSION
 	   exit 0;;
@@ -78,11 +88,18 @@ shift $((OPTIND-1))
 if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->REQ_FOLDER (-f): " $REQ_FOLDER  | tee -a "$REQ_LOG_FILE"
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->SRCH_MAP (-s): " $SRCH_MAP  | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->COPY_METHOD_INPUT (-m): " $COPY_METHOD_INPUT  | tee -a "$REQ_LOG_FILE"
 fi
 
 if [ "$REQ_FOLDER" == "" ]; then
 	#if folder parameter was not provided, abourt the operation
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Locaiont of the request folder was not provided ('-f' parameter), aborting process!" | tee -a "$REQ_LOG_FILE"
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Locaiont of the request folder was not provided ('-f' parameter), aborting the process!" | tee -a "$REQ_LOG_FILE"
+	exit 1
+fi
+
+# raise error if a $COPY_METHOD_INPUT is not blank and not one of the expected values
+if [[ ! " ${COPY_METHODS[@]} " =~ " ${COPY_METHOD_INPUT} " ]] && [ ! "$COPY_METHOD_INPUT" == "" ]; then
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Unexpected value '$COPY_METHOD_INPUT' was provided for the copy method ('-m' parameter), aborting the process! Expected values are ${COPY_METHODS[*]}'." | tee -a "$REQ_LOG_FILE"
 	exit 1
 fi
 
@@ -98,13 +115,19 @@ do
 
 	#to remove Windows line endings 
 	sed -i 's/\r$//' "$file"
+	
+	#verify that the file has end of line as the very last character in the file
+	#it is needed to makesure that the last line of the file will be executed
+	[ -n "$(tail -c1 $file)" ] && printf '\n' >>$file 
 
 	#CREATED_LOG_FILES=""
 
 	CNT=0
 	while read -r dldurl TRG_FLD LOC_NAME
 	do
-		#echo $CNT
+		if [ "$_PD" == "1" ]; then #output in debug mode only
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Processing line #: $CNT" | tee -a "$REQ_LOG_FILE"
+		fi
 		if [ ! "$CNT" == "0" ]; then
 			if [ "$_PD" == "1" ]; then #output in debug mode only
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
@@ -113,6 +136,38 @@ do
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->requested local name: $LOC_NAME" | tee -a "$REQ_LOG_FILE"
 			fi
 			
+			# if any of the provided values is blank, the system will skip this entry and go to the next one
+			if [ "$dldurl" == "" ] || [ "$TRG_FLD" == "" ] || [ "$LOC_NAME" == "" ]; then
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Request entry line from a file does not have all expected values provided, skipping this line! Here are retrieved values: dldurl='$dldurl', TRG_FLD='$TRG_FLD', LOC_NAME='$LOC_NAME' " | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+				CNT=$((CNT+1))
+				continue
+			fi
+			
+			COPY_METHOD="" #reset COPY_METHOD value
+			if [ "$COPY_METHOD_INPUT" == "" ]; then
+				#if copy method parameter is blank, check if source path starts with 'https://' and assign 'wget', otherwise assign 'cp'
+				for method_filter in ${COPY_METHOD_WGET_FILTER[*]}
+				do
+					# loop through to see if source value matching wget filter criteria
+					if [[ "$dldurl" =~ ^"${method_filter}".* ]]; then
+						COPY_METHOD="wget"
+					fi
+				done
+				#if there was no match for the wget filter and $COPY_METHOD is still blank assign cp as defaul
+				if [ "$COPY_METHOD" == "" ]; then
+					COPY_METHOD="cp"
+				fi
+			else
+				# assign passed value for the copy method
+				COPY_METHOD=$COPY_METHOD_INPUT
+			fi
+			
+			if [ "$_PD" == "1" ]; then #output in debug mode only
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Final copy method to be used: '$COPY_METHOD'" | tee -a "$REQ_LOG_FILE"
+			fi
+			
+			# exit 0 # for testing only ==========================
+
 			#identify number of subfolders in the URL
 			elements=$(echo $dldurl | tr "/" "\n") #split URL by "/"
 			el_cnt=0
@@ -141,23 +196,27 @@ do
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->List of Log Files created for current request= "$CREATED_LOG_FILES | tee -a "$REQ_LOG_FILE"
 			fi
 			
-			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d" | tee -a "$REQ_LOG_FILE"
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d" | tee -a "$REQ_LOG_FILE"
 			#run the download tool for each of the URLs
-			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
+			#next line commented for testing purposes only
+			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
+			#if true; then # for testing purposes only
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->Successful finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
 					#echo  | tee -a "$REQ_LOG_FILE"
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
 					echo "Here is last 3 lines from the associated log file:" | tee -a "$REQ_LOG_FILE"
-					tail -n 3 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE"
+					if ! tail -n 3 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE" ; then
+						echo "Error: Failed to read log file using the following command: 'tail -n 3 -q $LOG_FLD/$LOG_FILE'." | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					fi
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE"
 					#echo  | tee -a "$REQ_LOG_FILE"
 				fi
 				#change group assignment for just downloaded data
-				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Change group assignment to group '$GRP' for the created directory (and all its contents): '$FINAL_TRG_FLD'" | tee -a "$REQ_LOG_FILE"
-				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Below is an output from change group command => chgrp -R -v $GRP $FINAL_TRG_FLD:" | tee -a "$REQ_LOG_FILE"
-				chgrp -R -v $GRP $FINAL_TRG_FLD 2>&1 | tee -a "$REQ_LOG_FILE"
-				echo "------------------------------" | tee -a "$REQ_LOG_FILE"
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Change group assignment to group '$GRP' for the created directory (and all its contents): '$FINAL_TRG_FLD'. Here is the command: chgrp -R $GRP $FINAL_TRG_FLD" | tee -a "$REQ_LOG_FILE"
+				# echo "$(date +"%Y-%m-%d %H:%M:%S")-->Below is an output from change group command => chgrp -R -v $GRP $FINAL_TRG_FLD:" | tee -a "$REQ_LOG_FILE"
+				chgrp -R $GRP $FINAL_TRG_FLD 2>&1 | tee -a "$REQ_LOG_FILE" # -v 
+				#echo "------------------------------" | tee -a "$REQ_LOG_FILE"
 			else
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR--> has occurred during processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
@@ -165,7 +224,9 @@ do
 					echo "The log file for the failed download process: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_ERROR_LOG_FILE" #output this only to error log file
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 					echo "Here is last 10 lines from the associated log file:" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
-					tail -n 10 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					if ! tail -n 10 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"; then
+						echo "Error: Failed to read log file using the following command: 'tail -n 10 -q $LOG_FLD/$LOG_FILE'." | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+					fi
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 				fi
@@ -175,17 +236,22 @@ do
 			echo  | tee -a "$REQ_LOG_FILE"
 		fi
 		CNT=$((CNT+1))
-		if [ "$_PD" == "1" ]; then #output in debug mode only
-			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Next CNT value: $CNT" | tee -a "$REQ_LOG_FILE"
-		fi
 	done < "$file"
 	
 	if [ "$_PD" == "1" ]; then #output in debug mode only
 		echo "$(date +"%Y-%m-%d %H:%M:%S")-->End of processing file: " $file | tee -a "$REQ_LOG_FILE"
 	fi
+
+# exit 0 # for testing only 
 	
+	#check if errors were logged during the process and include an appropriate flag to the renamed process file
+	if test -f "$REQ_ERROR_LOG_FILE"; then
+		PROC_STATUS="ERROR"
+	else
+		PROC_STATUS="OK"
+	fi
 	#moving file to a processed folder
-	PROCESSED_FILE=$REQ_FOLDER/$PROCESSED_FLD/$(date +"%Y%m%d_%H%M%S")_$(basename $file)
+	PROCESSED_FILE=$REQ_FOLDER/$PROCESSED_FLD/$(date +"%Y%m%d_%H%M%S")_${PROC_STATUS}_$(basename $file)
 	CUR_FILE_PATH=$file
 	if [ "$_PD" == "1" ]; then #output in debug mode only
 		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Moving and renaming processed file: '"$CUR_FILE_PATH"' to '"$PROCESSED_FILE"'" | tee -a "$REQ_LOG_FILE" 
