@@ -60,7 +60,8 @@ arguments usage:
                         - Second argument specifies path to the location where downloaded data will be saved.
                         - Third argument specifies the folder name that will be created in the given path; all downloaded data will be save in this folder.]
         [-s: pattern that will be used to search for Download Request files in the given folder. '*.tsv' is a default value.]
-
+        [-m: command that will be used to perfomr the download/copy process. If not provided, the data source for each entry in the request file will be analyzed to select the appropriate command.
+                - expected values are 'wget' or 'cp'].
 ----------------------------------------------
 start_processing_requests.sh
 ----------------------------------------------
@@ -86,6 +87,9 @@ Here is help info for in-line argument usage:
 	[-t target path where to downloaded data will be saved, i.e. /ext_data/stas/ECHO/PM/scrna-seq]
 	[-u URL of the source (where from data is being downloaded), i.e. https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
 	[-c number of URL's directories (following the main URL part with domain) that should be ignored, i.e. in the URL example provided for '-u' argument, there are 2 directories
+	[-m: command that will be used to perfomr the download/copy process.
+                - If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.
+                - expected values are 'wget' or 'cp'].
 
 Usage example: 
 ./dl_raw_data.sh -t /ext_data/stas/ECHO/PM/scrna-seq -u https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot -c 2

@@ -19,7 +19,7 @@ _HELP="\n$_VERSION
 		\n\t\t\t- Third argument specifies the folder name that will be created in the given path; all downloaded data will be save in this folder.
 		\n\t[-s: pattern that will be used to search for Download Request files in the given folder]
 		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source for each entry in the request file will be analyzed to select the appropriate command.
-		\n\t\t\texpected values are 'wget' or 'cp'].
+		\n\t\t- expected values are 'wget' or 'cp'].
 		\n
 		"
 
@@ -243,9 +243,15 @@ do
 	fi
 
 # exit 0 # for testing only 
-
+	
+	#check if errors were logged during the process and include an appropriate flag to the renamed process file
+	if test -f "$REQ_ERROR_LOG_FILE"; then
+		PROC_STATUS="ERROR"
+	else
+		PROC_STATUS="OK"
+	fi
 	#moving file to a processed folder
-	PROCESSED_FILE=$REQ_FOLDER/$PROCESSED_FLD/$(date +"%Y%m%d_%H%M%S")_$(basename $file)
+	PROCESSED_FILE=$REQ_FOLDER/$PROCESSED_FLD/$(date +"%Y%m%d_%H%M%S")_${PROC_STATUS}_$(basename $file)
 	CUR_FILE_PATH=$file
 	if [ "$_PD" == "1" ]; then #output in debug mode only
 		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Moving and renaming processed file: '"$CUR_FILE_PATH"' to '"$PROCESSED_FILE"'" | tee -a "$REQ_LOG_FILE" 

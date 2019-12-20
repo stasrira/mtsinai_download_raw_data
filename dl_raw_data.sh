@@ -24,8 +24,9 @@ _HELP="\n$_VERSION
 		\n\t[-t target path where to downloaded data will be saved, i.e. /ext_data/stas/ECHO/PM/scrna-seq] 
 		\n\t[-u URL of the source (where from data is being downloaded), i.e. https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD00986_DARAPPilot/
 		\n\t[-c number of URL's directories (following the main URL part with domain) that should be ignored, i.e. in the URL example provided for '-u' argument, there are 2 directories
-		\n\t[-m: command that will be used to perfomr the download/copy process. If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.
-		\n\t\t\texpected values are 'wget' or 'cp'].
+		\n\t[-m: command that will be used to perfomr the download/copy process. 
+		\n\t\t- If not provided, the data source (-u parameter) for each entry in the request file will be analyzed to select the appropriate command.
+		\n\t\t- expected values are 'wget' or 'cp'].
 		"
 
 #set default values
@@ -64,26 +65,29 @@ shift $((OPTIND-1))
 
 #output values of arguments in debug mode
 if [ "$_PD" == "1" ]; then #output in debug mode only
-	echo "Report (-u): " $_URL
-	echo "Report (-t): " $_TRG
-	echo "Report (-c): " $_CUT_DIR_NUM
-	echo "Report (-m): " $_COPY_METHOD
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Report (-u): " $_URL
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Report (-t): " $_TRG
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Report (-c): " $_CUT_DIR_NUM
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Report (-m): " $_COPY_METHOD
 fi
 
 #verify that target folder exists and back it up if it exists
-_TAR_FILE_NAME=${_TRG}'_date%Y%M%D_%H%M%S.tar'
+_TAR_FILE_NAME="${_TRG}_$(date +"%Y%m%d_%H%M%S").tar"
+echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name, in case a backup is needed, is ${_TAR_FILE_NAME}"
+CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}"
 if [ -d "$_TRG" ]; then
-	if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
-		echo Existing folder '${_TRG}' was successfully archived to '${_TAR_FILE_NAME}' and its original content was deleted.
+	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Here is the archiving command to be executed: '$CMD_TAR'"
+	#if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
+	if echo "$CMD_TAR" |bash; then
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Existing folder $_TRG was successfully archived to $_TAR_FILE_NAME and its original content was deleted."
 	else
-		echo ERROR: Archiving existing folder '${_TRG}' failed. Aborting the data retrieval process for the current requests entry. 
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Archiving existing folder $_TRG failed. Aborting the data retrieval process for the current requests entry."
 		exit 1
 	fi
 fi
 
 #verify that target folder exists and create it if it is not there
 mkdir -p "$_TRG"
-
 
 #verify requested method to be used and set the _CMD_TMP accordingly
 if [ "$_COPY_METHOD" == "cp" ]; then
@@ -95,7 +99,7 @@ if [ "$_COPY_METHOD" == "wget" ]; then
 fi
 
 if [ "$_PD" == "1" ]; then #output in debug mode only
-    echo "Command template(_CMD_TMP): " $_CMD_TMP
+    echo "$(date +"%Y-%m-%d %H:%M:%S")-->Command template(_CMD_TMP): " $_CMD_TMP
 fi
 
 #update _CMD_TMP variable by substituting place-holders with the actual values supplied as an argument
@@ -108,9 +112,10 @@ _CMD=${_CMD//$_PL_HLDR_CUT_DIR_NUM/$_CUT_DIR_NUM}
 #_CMD="sqlcmd -S $_S -U $_U -P $_P -d $_D -Q \" $_QR \" $_DELIM_FMT"
 
 if [ "$_PD" == "1" ]; then
-    echo "Final Command = $_CMD"
+    echo "$(date +"%Y-%m-%d %H:%M:%S")-->Final Command to be executed: '$_CMD'"
 fi
-
 echo "${_CMD}" |bash #execute preapred command
-
+if [ "$_PD" == "1" ]; then
+    echo "$(date +"%Y-%m-%d %H:%M:%S")-->Finish execution of the final command."
+fi
 
