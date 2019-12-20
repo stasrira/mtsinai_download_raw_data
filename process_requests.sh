@@ -126,6 +126,7 @@ do
 	while read -r dldurl TRG_FLD LOC_NAME
 	do
 		if [ "$_PD" == "1" ]; then #output in debug mode only
+			echo  | tee -a "$REQ_LOG_FILE"
 			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Processing line #: $CNT" | tee -a "$REQ_LOG_FILE"
 		fi
 		if [ ! "$CNT" == "0" ]; then
@@ -138,7 +139,8 @@ do
 			
 			# if any of the provided values is blank, the system will skip this entry and go to the next one
 			if [ "$dldurl" == "" ] || [ "$TRG_FLD" == "" ] || [ "$LOC_NAME" == "" ]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S")-->Request entry line from a file does not have all expected values provided, skipping this line! Here are retrieved values: dldurl='$dldurl', TRG_FLD='$TRG_FLD', LOC_NAME='$LOC_NAME' " | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Request entry line from a file does not have all expected values provided, skipping this line! Here are retrieved values: dldurl='$dldurl', TRG_FLD='$TRG_FLD', LOC_NAME='$LOC_NAME' " | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+				echo "==============================" | tee -a "$REQ_LOG_FILE"
 				CNT=$((CNT+1))
 				continue
 			fi
@@ -221,7 +223,7 @@ do
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR--> has occurred during processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
-					echo "The log file for the failed download process: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_ERROR_LOG_FILE" #output this only to error log file
+					echo "$(date +"%Y-%m-%d %H:%M:%S")-->The log file for the failed download process: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_ERROR_LOG_FILE" #output this only to error log file
 					echo "------------------------------" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 					echo "Here is last 10 lines from the associated log file:" | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 					if ! tail -n 10 -q $LOG_FLD/$LOG_FILE | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"; then
@@ -231,9 +233,11 @@ do
 					echo  | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 				fi
 			fi
-			echo "End of processing download request for:'$LOC_NAME'. Additional details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->End of processing download request for:'$LOC_NAME'. Additional details of the processed download can be found in the log file: $LOG_FLD/$LOG_FILE" | tee -a "$REQ_LOG_FILE"
 			echo "==============================" | tee -a "$REQ_LOG_FILE"
-			echo  | tee -a "$REQ_LOG_FILE"
+		else
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Skipping the first line of the file, since it is considered to contain headers only." | tee -a "$REQ_LOG_FILE"
+			echo "==============================" | tee -a "$REQ_LOG_FILE"
 		fi
 		CNT=$((CNT+1))
 	done < "$file"
