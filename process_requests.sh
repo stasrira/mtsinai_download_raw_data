@@ -24,8 +24,9 @@ _HELP="\n$_VERSION
 		"
 
 #verify the set value for the follwoing variables, to make sure that they point to correct locations
-DL_TOOL_LOC="./dl_raw_data.sh" #path to the download tool
-ARCH_TOOL_LOC="./arch_logs.sh"
+wrk_dir=`dirname $0`
+DL_TOOL_LOC=$wrk_dir"/dl_raw_data.sh" #path to the download tool
+ARCH_TOOL_LOC=$wrk_dir"/arch_logs.sh"
 #array of remote web folders where from data is picked up
 #declare -a DLD_URLS=("https://wangy33.u.hpc.mssm.edu/10X_Single_Cell_RNA/TD01119_DARPA/096_ATACseq_AS10_07990_2/outs/summary.csv"
 #)

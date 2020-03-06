@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #version of the script
-_VER_NUM=1.02
+_VER_NUM=1.03
 _VERSION="`basename ${0}` (version: $_VER_NUM)" 
 
 #define main variables
@@ -71,18 +71,21 @@ if [ "$_PD" == "1" ]; then #output in debug mode only
 	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Report (-m): " $_COPY_METHOD
 fi
 
-#verify that target folder exists and back it up if it exists
-_TAR_FILE_NAME="${_TRG}_$(date +"%Y%m%d_%H%M%S").tar"
+#verify if target dir exists and source location is a folder too -> back up the target dir in this case, so the source dir do not overwrite the target dir
+_TAR_FILE_NAME="${_TRG}_archive_$(date +"%Y%m%d_%H%M%S").tar"
 echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name, in case a backup is needed, is ${_TAR_FILE_NAME}"
 CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}"
-if [ -d "$_TRG" ]; then
-	echo "$(date +"%Y-%m-%d %H:%M:%S")-->Here is the archiving command to be executed: '$CMD_TAR'"
-	#if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
-	if echo "$CMD_TAR" |bash; then
-		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Existing folder $_TRG was successfully archived to $_TAR_FILE_NAME and its original content was deleted."
-	else
-		echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Archiving existing folder $_TRG failed. Aborting the data retrieval process for the current requests entry."
-		exit 1
+if [ -d "$_TRG" ]; then # check if target dir is a directory
+	if [[ -d $_URL ]]; then # check if source dir is a directory
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Target and Source locations were identified as directories. Since Target location exists, it will be archived before downloading the Source."
+		echo "$(date +"%Y-%m-%d %H:%M:%S")-->Here is the archiving command to be executed: '$CMD_TAR'"
+		#if tar -cvf ${_TAR_FILE_NAME} --remove-files ${_TRG}; then
+		if echo "$CMD_TAR" |bash; then
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Existing folder $_TRG was successfully archived to $_TAR_FILE_NAME and its original content was deleted."
+		else
+			echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Archiving existing folder $_TRG failed. Aborting the data retrieval process for the current requests entry."
+			exit 1
+		fi
 	fi
 fi
 
@@ -92,7 +95,10 @@ mkdir -p "$_TRG"
 #verify requested method to be used and set the _CMD_TMP accordingly
 if [ "$_COPY_METHOD" == "cp" ]; then
 	_CMD_TMP=$_CMD_TMP1
-	_URL=$_URL/ #adds trailing slash to make sure that only content of the source is being copied without the origial folder name
+	if [[ -d $_URL ]]; then
+		#if source is a directory, add trailing slash to make sure that only content of the source is being copied without the origial folder name
+		_URL=$_URL/ 
+	fi
 fi
 if [ "$_COPY_METHOD" == "wget" ]; then
 	_CMD_TMP=$_CMD_TMP2
