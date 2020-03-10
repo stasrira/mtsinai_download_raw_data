@@ -116,6 +116,9 @@ if [ -d "$_TRG" ]; then # check if target dir is an exsiting directory
 		if [[ -d $_URL ]]; then # check if source is a directory
 			# source of data is a directory; backup is needed
 			_ARCH_OBJ="${_TRG}"
+			# _TAR_FILE_NAME="${_ARCH_OBJ}_archive_$(date +"%Y%m%d_%H%M%S").tar"
+			# echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name is ${_TAR_FILE_NAME}"
+			# CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_ARCH_OBJ}"
 			# call function to backup target object
 			Backup_target_folder $_ARCH_OBJ
 			if [ $? == 1 ]; then # check returned value
@@ -130,6 +133,9 @@ if [ -d "$_TRG" ]; then # check if target dir is an exsiting directory
 				# echo "_ARCH_OBJ = "$_ARCH_OBJ
 				if [[ -f $_ARCH_OBJ ]]; then # check if target file exists
 					# target file exists, backup is needed
+					# _TAR_FILE_NAME="${_ARCH_OBJ}_archive_$(date +"%Y%m%d_%H%M%S").tar"
+					# echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name is ${_TAR_FILE_NAME}"
+					# CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_ARCH_OBJ}"
 					# call function to backup target object
 					Backup_target_folder $_ARCH_OBJ
 					if [ $? == 1 ]; then # check returned value
@@ -151,6 +157,9 @@ if [ -d "$_TRG" ]; then # check if target dir is an exsiting directory
 			if [[ "$_SRC_OBJ_TYPE" == "dir" ]]; then
 				# source of web data is a directory; backup is needed
 				_ARCH_OBJ="${_TRG}"
+				# _TAR_FILE_NAME="${_ARCH_OBJ}_archive_$(date +"%Y%m%d_%H%M%S").tar"
+				# echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name is ${_TAR_FILE_NAME}"
+				# CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_ARCH_OBJ}"
 				# call function to backup target object
 				Backup_target_folder $_ARCH_OBJ
 				if [ $? == 1 ]; then # check returned value
@@ -163,6 +172,10 @@ if [ -d "$_TRG" ]; then # check if target dir is an exsiting directory
 					_ARCH_OBJ="${_TRG}/"`basename ${_URL}`
 					if [[ -f $_ARCH_OBJ ]]; then # check if target file exists
 						# target file exists, backup is needed
+						
+						# _TAR_FILE_NAME="${_ARCH_OBJ}_archive_$(date +"%Y%m%d_%H%M%S").tar"
+						# echo "$(date +"%Y-%m-%d %H:%M:%S")-->Predefined tar file name is ${_TAR_FILE_NAME}"
+						# CMD_TAR="tar -cvf ${_TAR_FILE_NAME} --remove-files ${_ARCH_OBJ}"
 						# call function to backup target object
 						Backup_target_folder $_ARCH_OBJ
 						if [ $? == 1 ]; then # check returned value
@@ -218,8 +231,5 @@ _CMD=${_CMD//$_PL_HLDR_CUT_DIR_NUM/$_CUT_DIR_NUM}
 if [ "$_PD" == "1" ]; then
     echo "$(date +"%Y-%m-%d %H:%M:%S")-->Final Command to be executed: '$_CMD'"
 fi
-echo "${_CMD}" |bash #execute preapred command
-if [ "$_PD" == "1" ]; then
-    echo "$(date +"%Y-%m-%d %H:%M:%S")-->Finish execution of the final command."
-fi
+
 

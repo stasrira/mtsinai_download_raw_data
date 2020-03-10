@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
+# test command to start the script
+# /ext_data/stas/mountsinai_utils/data_downloader/process_requests_test.sh -d -f /ext_data/stas/mountsinai_utils/data_downloader/data_transfer_requests
+
 #version of the script
-_VER_NUM=1.02
+_VER_NUM=1.03
 _VERSION="`basename ${0}` (version: $_VER_NUM)" 
 
 _HELP="\n$_VERSION
@@ -39,7 +42,7 @@ COPY_METHOD=""
 
 CUT_DIR=0 #default number of web directories that will be cut off (starting from the domain name)
 CUT_DIR_STANDARD_DEDUCTION=2 #2 stands for number of elements after parcing the URL that reflects HTTP and main domain parts
-MAIN_LOG="logs"
+MAIN_LOG=$wrk_dir"/logs"
 PROCESSED_FLD="processed"
 REQ_FOLDER=""
 SRCH_MAP="*.tsv"
@@ -124,7 +127,7 @@ do
 	#CREATED_LOG_FILES=""
 
 	CNT=0
-	while read -r dldurl TRG_FLD LOC_NAME
+	while read -r dldurl TRG_FLD LOC_NAME obj_type
 	do
 		if [ "$_PD" == "1" ]; then #output in debug mode only
 			echo  | tee -a "$REQ_LOG_FILE"
@@ -136,14 +139,21 @@ do
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->source: $dldurl" | tee -a "$REQ_LOG_FILE"
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->requested destination: $TRG_FLD" | tee -a "$REQ_LOG_FILE"
 				echo "$(date +"%Y-%m-%d %H:%M:%S")-->requested local name: $LOC_NAME" | tee -a "$REQ_LOG_FILE"
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->source object type being copied: $obj_type" | tee -a "$REQ_LOG_FILE"
+				
 			fi
 			
 			# if any of the provided values is blank, the system will skip this entry and go to the next one
 			if [ "$dldurl" == "" ] || [ "$TRG_FLD" == "" ] || [ "$LOC_NAME" == "" ]; then
-				echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Request entry line from a file does not have all expected values provided, skipping this line! Here are retrieved values: dldurl='$dldurl', TRG_FLD='$TRG_FLD', LOC_NAME='$LOC_NAME' " | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
+				echo "$(date +"%Y-%m-%d %H:%M:%S")-->ERROR: Request entry line from a file does not have all expected values provided, skipping this line! Here are retrieved values: dldurl='$dldurl', TRG_FLD='$TRG_FLD', LOC_NAME='$LOC_NAME', obj_type='$obj_type' " | tee -a "$REQ_LOG_FILE" "$REQ_ERROR_LOG_FILE"
 				echo "==============================" | tee -a "$REQ_LOG_FILE"
 				CNT=$((CNT+1))
 				continue
+			fi
+			
+			# if obj_type variable is blank, assign default value
+			if [ "$obj_type" == "" ] ; then
+				obj_type="dir"
 			fi
 			
 			COPY_METHOD="" #reset COPY_METHOD value
@@ -202,7 +212,7 @@ do
 			echo "$(date +"%Y-%m-%d %H:%M:%S")-->Start downloading tool => $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d" | tee -a "$REQ_LOG_FILE"
 			#run the download tool for each of the URLs
 			#next line commented for testing purposes only
-			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
+			if $DL_TOOL_LOC -t $FINAL_TRG_FLD -u $dldurl -c $CUT_DIR -m $COPY_METHOD -b $obj_type -d 2>&1 | tee "$LOG_FLD/$LOG_FILE"; then
 			#if true; then # for testing purposes only
 				if [ "$_PD" == "1" ]; then #output in debug mode only
 					echo "$(date +"%Y-%m-%d %H:%M:%S")-->Successful finish of processing download request for: " $LOC_NAME | tee -a "$REQ_LOG_FILE"
@@ -247,7 +257,7 @@ do
 		echo "$(date +"%Y-%m-%d %H:%M:%S")-->End of processing file: " $file | tee -a "$REQ_LOG_FILE"
 	fi
 
-# exit 0 # for testing only 
+#exit 0 # for testing only 
 	
 	#check if errors were logged during the process and include an appropriate flag to the renamed process file
 	if test -f "$REQ_ERROR_LOG_FILE"; then
@@ -270,6 +280,9 @@ do
 	ATTCH_REQUESTS=$ATTCH_REQUESTS" --attach-type text/plain --attach $PROCESSED_FILE"
 	PROC_REQS=$PROC_REQS" "$(basename $PROCESSED_FILE)";"
 done
+
+# exit 0 # for testing only
+
 
 echo "$(date +"%Y-%m-%d %H:%M:%S")-->Archiving tool: Start archiving old log files => $ARCH_TOOL_LOC -d -f $MAIN_LOG -e $CREATED_LOG_FILES" | tee -a "$REQ_LOG_FILE"
 
