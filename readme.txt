@@ -7,6 +7,16 @@ Application for
 This application runs a script that utilizes other tools. Description of all supporting tools is provided further in this document.
 
 ----------------------------------------------
+Start up scripts/files
+----------------------------------------------
+Execution of the tool is designed to be started with one of the following script files that will trigger execution of other tools. More details
+on each tool can be found further in the document.
+Here are the scripts to be used to start the tool: 
+	- start_processing_requests_auto_posted_only.sh - will process requests posted in the "auto_posted" directory.
+	- start_processing_requests_manually_posted_only.sh - will process requests posted in the "manually_posted" directory.
+	- start_processing_requests_all_sources.sh - will process requests posted in "auto_posted" and "manually_posted" directories.
+
+----------------------------------------------
 process_requests.sh
 ----------------------------------------------
 The main application script is "process_requests.sh". This script drives whole process and make calls to any other required tool. 
